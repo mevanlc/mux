@@ -62,7 +62,7 @@ func TestVerticalLayoutDimensions(t *testing.T) {
 	for _, w := range widths {
 		for _, h := range heights {
 			t.Run("", func(t *testing.T) {
-				m := NewModel(WithVerticalLayout())
+				m := NewModel(WithLayoutMode(LayoutVertical))
 				m.width = w
 				m.height = h
 				m.sessions = sessions
@@ -102,13 +102,59 @@ func TestAutoLayoutSwitchesWithAspectRatio(t *testing.T) {
 	}
 }
 
+func TestParseLayoutMode(t *testing.T) {
+	tests := []struct {
+		value     string
+		wantMode  LayoutMode
+		wantValue string
+	}{
+		{"a", LayoutAuto, "auto"},
+		{"auto", LayoutAuto, "auto"},
+		{"h", LayoutHorizontal, "horizontal"},
+		{"horizontal", LayoutHorizontal, "horizontal"},
+		{"v", LayoutVertical, "vertical"},
+		{"vertical", LayoutVertical, "vertical"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			gotMode, gotValue, err := ParseLayoutMode(tt.value)
+			if err != nil {
+				t.Fatalf("ParseLayoutMode(%q): %v", tt.value, err)
+			}
+			if gotMode != tt.wantMode {
+				t.Fatalf("mode = %v, want %v", gotMode, tt.wantMode)
+			}
+			if gotValue != tt.wantValue {
+				t.Fatalf("value = %q, want %q", gotValue, tt.wantValue)
+			}
+		})
+	}
+}
+
+func TestParseLayoutModeRejectsInvalidValue(t *testing.T) {
+	if _, _, err := ParseLayoutMode("diagonal"); err == nil {
+		t.Fatal("ParseLayoutMode should reject invalid values")
+	}
+}
+
 func TestForcedVerticalOverridesAutoLayout(t *testing.T) {
-	m := NewModel(WithVerticalLayout())
+	m := NewModel(WithLayoutMode(LayoutVertical))
 	m.width = 320
 	m.height = 90
 
 	if !m.isVerticalLayout() {
 		t.Fatal("forced vertical layout should override 16:9 terminal")
+	}
+}
+
+func TestForcedHorizontalOverridesAutoLayout(t *testing.T) {
+	m := NewModel(WithLayoutMode(LayoutHorizontal))
+	m.width = 100
+	m.height = 50
+
+	if m.isVerticalLayout() {
+		t.Fatal("forced horizontal layout should override near-square terminal")
 	}
 }
 

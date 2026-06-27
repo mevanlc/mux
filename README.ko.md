@@ -82,7 +82,7 @@ go install github.com/lunemis/mux/cmd/mux@latest
 
 왼쪽 패널에 세션 목록(AI 배지 + git 브랜치), 오른쪽 패널에 선택한 세션의 **실시간 프리뷰**가 500ms마다 갱신됩니다.
 
-기본적으로 `mux`는 터미널 비율이 16:9보다 1:1에 가까우면 세션 목록을 위, 프리뷰를 아래에 자동으로 쌓고, 1:1보다 16:9에 가까우면 좌우 배치로 전환합니다. `mux -v` 또는 `mux --vertical`을 사용하면 세로 배치를 강제합니다.
+기본적으로 `mux`는 터미널 비율이 16:9보다 1:1에 가까우면 세션 목록을 위, 프리뷰를 아래에 자동으로 쌓고, 1:1보다 16:9에 가까우면 좌우 배치로 전환합니다. `mux --layout vertical` 또는 `mux --layout v`로 세로 배치를 강제하고, `mux --layout horizontal` 또는 `mux --layout h`로 좌우 배치를 강제하며, `mux --layout auto` 또는 `mux --layout a`로 자동 배치를 사용합니다.
 
 ### 팝업 모드 (추천)
 

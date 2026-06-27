@@ -40,6 +40,28 @@ const (
 	modeConfirmKill
 )
 
+// LayoutMode controls whether mux chooses a layout automatically or forces one.
+type LayoutMode int
+
+const (
+	LayoutAuto LayoutMode = iota
+	LayoutHorizontal
+	LayoutVertical
+)
+
+func ParseLayoutMode(value string) (LayoutMode, string, error) {
+	switch strings.ToLower(value) {
+	case "a", "auto":
+		return LayoutAuto, "auto", nil
+	case "h", "horizontal":
+		return LayoutHorizontal, "horizontal", nil
+	case "v", "vertical":
+		return LayoutVertical, "vertical", nil
+	default:
+		return LayoutAuto, "", fmt.Errorf("invalid layout %q (want auto/a, horizontal/h, or vertical/v)", value)
+	}
+}
+
 // Model is the top-level Bubble Tea model for the session manager TUI.
 type Model struct {
 	sessions        []tmux.Session
@@ -50,7 +72,7 @@ type Model struct {
 	mode            mode
 	width           int
 	height          int
-	vertical        bool
+	layoutMode      LayoutMode
 	horizontalSplit float64
 	verticalSplit   float64
 	err             error
@@ -70,10 +92,11 @@ type Model struct {
 // ModelOption configures the TUI model.
 type ModelOption func(*Model)
 
-// WithVerticalLayout stacks the session list above the preview pane.
-func WithVerticalLayout() ModelOption {
+// WithLayoutMode controls whether the TUI uses automatic, horizontal, or
+// vertical layout.
+func WithLayoutMode(layoutMode LayoutMode) ModelOption {
 	return func(m *Model) {
-		m.vertical = true
+		m.layoutMode = layoutMode
 	}
 }
 
@@ -458,7 +481,14 @@ func (m Model) splitLayout() splitLayout {
 }
 
 func (m Model) isVerticalLayout() bool {
-	return m.vertical || autoVerticalLayout(m.width, m.height)
+	switch m.layoutMode {
+	case LayoutHorizontal:
+		return false
+	case LayoutVertical:
+		return true
+	default:
+		return autoVerticalLayout(m.width, m.height)
+	}
 }
 
 // autoVerticalLayout compares the terminal aspect ratio with 1:1 and 16:9,

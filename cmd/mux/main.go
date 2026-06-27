@@ -23,17 +23,21 @@ func main() {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 	rootCmd.SetVersionTemplate("mux {{.Version}}\n")
-	rootCmd.PersistentFlags().BoolP("vertical", "v", false, "stack panels vertically")
+	rootCmd.PersistentFlags().String("layout", "auto", "layout mode: auto/a, horizontal/h, or vertical/v")
 
 	popupCmd := &cobra.Command{
 		Use:   "popup",
 		Short: "Open mux as a tmux popup overlay",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			vertical, err := cmd.Flags().GetBool("vertical")
+			layout, err := cmd.Flags().GetString("layout")
 			if err != nil {
 				return err
 			}
-			return tmux.OpenPopup(vertical)
+			_, canonicalLayout, err := ui.ParseLayoutMode(layout)
+			if err != nil {
+				return err
+			}
+			return tmux.OpenPopup(canonicalLayout)
 		},
 	}
 
@@ -100,15 +104,16 @@ func joinWith(parts []string, sep string) string {
 }
 
 func runTUI(cmd *cobra.Command, args []string) error {
-	vertical, err := cmd.Flags().GetBool("vertical")
+	layout, err := cmd.Flags().GetString("layout")
+	if err != nil {
+		return err
+	}
+	layoutMode, _, err := ui.ParseLayoutMode(layout)
 	if err != nil {
 		return err
 	}
 
-	var options []ui.ModelOption
-	if vertical {
-		options = append(options, ui.WithVerticalLayout())
-	}
+	options := []ui.ModelOption{ui.WithLayoutMode(layoutMode)}
 
 	p := tea.NewProgram(ui.NewModel(options...), tea.WithAltScreen())
 

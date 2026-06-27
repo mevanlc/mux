@@ -63,7 +63,7 @@ func TestHorizontalSplitResizePersists(t *testing.T) {
 func TestVerticalSplitResizePersistsIndependently(t *testing.T) {
 	withTempSettingsDir(t)
 
-	m := NewModel(WithVerticalLayout())
+	m := NewModel(WithLayoutMode(LayoutVertical))
 	m.height = 30
 	updated, _ := m.updateList(tea.KeyMsg{Type: tea.KeyShiftDown})
 	m = updated.(Model)
@@ -75,7 +75,7 @@ func TestVerticalSplitResizePersistsIndependently(t *testing.T) {
 		t.Fatalf("horizontal split = %d, want default 40", got)
 	}
 
-	restored := NewModel(WithVerticalLayout())
+	restored := NewModel(WithLayoutMode(LayoutVertical))
 	if got := splitPaneSize(27, restored.verticalSplit); got != 12 {
 		t.Fatalf("restored vertical split = %d, want 12", got)
 	}
