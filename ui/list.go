@@ -93,17 +93,14 @@ func formatSessionRow(s tmux.Session, expanded, selected bool, width int) string
 		status = "*"
 	}
 
-	name := s.Name
-	if len(name) > maxSessionNameDisplay {
-		name = name[:maxSessionNameDisplay-3] + "..."
-	}
-
 	ago := timeAgo(s.Created)
 
 	icon, iconColor := commandIconPlain(s.ActiveCommand)
 	var styledIcon string
+	extraWidth := 0
 	if iconColor != "" {
 		styledIcon = " " + lipgloss.NewStyle().Foreground(lipgloss.Color(iconColor)).Render(icon)
+		extraWidth = 1
 	}
 
 	branch := ""
@@ -111,13 +108,12 @@ func formatSessionRow(s tmux.Session, expanded, selected bool, width int) string
 		branch = " " + s.GitBranch
 	}
 
-	text := fmt.Sprintf("%s %s %-18s %s", chevron, status, name, ago)
-	text += styledIcon + branch
-	extraWidth := 0
-	if iconColor != "" {
-		extraWidth = 1
-	}
-	row := padOrTruncate(text, width-extraWidth)
+	rowWidth := max(0, width-extraWidth)
+	prefix := fmt.Sprintf("%s %s ", chevron, status)
+	suffix := " " + ago + styledIcon + branch
+	nameWidth := max(0, rowWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix))
+	name := padOrTruncate(truncateWithEllipsis(s.Name, nameWidth), nameWidth)
+	row := padOrTruncate(prefix+name+suffix, rowWidth)
 
 	if selected {
 		return lipgloss.NewStyle().

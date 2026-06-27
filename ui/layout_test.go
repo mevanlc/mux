@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/lunemis/mux/tmux"
 )
 
@@ -76,6 +77,65 @@ func TestVerticalLayoutDimensions(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestAutoLayoutSwitchesWithAspectRatio(t *testing.T) {
+	m := NewModel()
+
+	m.width = 100
+	m.height = 50
+	if !m.isVerticalLayout() {
+		t.Fatal("near-square terminal should use vertical layout")
+	}
+
+	m.width = 320
+	m.height = 90
+	if m.isVerticalLayout() {
+		t.Fatal("16:9 terminal should use horizontal layout")
+	}
+
+	m.width = 25
+	m.height = 9
+	if m.isVerticalLayout() {
+		t.Fatal("equidistant aspect ratio should keep horizontal default")
+	}
+}
+
+func TestForcedVerticalOverridesAutoLayout(t *testing.T) {
+	m := NewModel(WithVerticalLayout())
+	m.width = 320
+	m.height = 90
+
+	if !m.isVerticalLayout() {
+		t.Fatal("forced vertical layout should override 16:9 terminal")
+	}
+}
+
+func TestSessionNameUsesAvailableRowWidth(t *testing.T) {
+	name := "very-long-session-name-that-fits-here"
+	row := formatSessionRow(tmux.Session{Name: name, Created: time.Now()}, false, false, 60)
+
+	if !strings.Contains(row, name) {
+		t.Fatalf("session name should not be capped when row has space: %q", row)
+	}
+	if got := ansi.StringWidth(row); got != 60 {
+		t.Fatalf("row width = %d, want 60", got)
+	}
+}
+
+func TestSessionNameTruncatesToNarrowRowWidth(t *testing.T) {
+	name := "very-long-session-name-that-does-not-fit"
+	row := formatSessionRow(tmux.Session{Name: name, Created: time.Now()}, false, false, 24)
+
+	if strings.Contains(row, name) {
+		t.Fatalf("session name should truncate in a narrow row: %q", row)
+	}
+	if !strings.Contains(row, "...") {
+		t.Fatalf("truncated session name should include ellipsis: %q", row)
+	}
+	if got := ansi.StringWidth(row); got != 24 {
+		t.Fatalf("row width = %d, want 24", got)
 	}
 }
 

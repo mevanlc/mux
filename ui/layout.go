@@ -21,6 +21,19 @@ func padOrTruncate(s string, width int) string {
 	return s
 }
 
+func truncateWithEllipsis(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if ansi.StringWidth(s) <= width {
+		return s
+	}
+	if width <= 3 {
+		return ansi.Truncate(s, width, "")
+	}
+	return ansi.Truncate(s, width-3, "") + "..."
+}
+
 // fixedBox takes rendered content and forces it to exactly width x height visible area.
 // It splits by newlines, truncates/pads each line to width, and truncates/pads to height lines.
 func fixedBox(content string, width, height int) string {

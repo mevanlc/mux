@@ -424,13 +424,13 @@ func (m Model) resizeSplit(delta int) (tea.Model, tea.Cmd) {
 	}
 
 	ratio := m.horizontalSplit
-	if m.vertical {
+	if m.isVerticalLayout() {
 		ratio = m.verticalSplit
 	}
 
 	size := splitPaneSize(total, ratio) + delta
 	ratio = splitRatioForSize(total, size)
-	if m.vertical {
+	if m.isVerticalLayout() {
 		m.verticalSplit = ratio
 	} else {
 		m.horizontalSplit = ratio
@@ -444,13 +444,27 @@ func (m Model) resizeSplit(delta int) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) splitTotal() int {
-	if m.vertical {
+	if m.isVerticalLayout() {
 		if m.height == 0 {
 			return 0
 		}
 		return m.panelHeight()
 	}
 	return m.width
+}
+
+func (m Model) isVerticalLayout() bool {
+	return m.vertical || autoVerticalLayout(m.width, m.height)
+}
+
+// autoVerticalLayout compares the terminal aspect ratio with 1:1 and 16:9,
+// accounting for terminal cells being roughly twice as tall as they are wide.
+// Equal distance keeps the historical horizontal default.
+func autoVerticalLayout(width, height int) bool {
+	if width <= 0 || height <= 0 {
+		return false
+	}
+	return 9*width < 25*height
 }
 
 func (m Model) panelHeight() int {
@@ -658,7 +672,7 @@ func (m Model) viewMain() string {
 	}
 
 	var content string
-	if m.vertical {
+	if m.isVerticalLayout() {
 		listHeight := splitPaneSize(panelHeight, m.verticalSplit)
 		previewHeight := panelHeight - listHeight
 
