@@ -10,42 +10,47 @@ const configFileName = "config.json"
 
 var userConfigDir = os.UserConfigDir
 
+type splitLayout string
+
+const (
+	layoutHorizontal splitLayout = "horizontal"
+	layoutVertical   splitLayout = "vertical"
+)
+
 type settings struct {
-	HorizontalSplit float64 `json:"horizontal_split"`
-	VerticalSplit   float64 `json:"vertical_split"`
+	SplitSizes map[splitLayout]float64 `json:"split_sizes"`
 }
 
 func defaultSettings() settings {
 	return settings{
-		HorizontalSplit: defaultSplitRatio,
-		VerticalSplit:   defaultSplitRatio,
+		SplitSizes: map[splitLayout]float64{
+			layoutHorizontal: defaultSplitRatio,
+			layoutVertical:   defaultSplitRatio,
+		},
 	}
 }
 
 func loadSettings() settings {
-	result := defaultSettings()
-
 	path, err := settingsPath()
 	if err != nil {
-		return result
+		return defaultSettings()
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return result
+		return defaultSettings()
 	}
+
+	var result settings
 	if err := json.Unmarshal(data, &result); err != nil {
 		return defaultSettings()
 	}
 
-	result.HorizontalSplit = validSplitRatio(result.HorizontalSplit)
-	result.VerticalSplit = validSplitRatio(result.VerticalSplit)
-	return result
+	return normalizedSettings(result)
 }
 
 func saveSettings(s settings) error {
-	s.HorizontalSplit = validSplitRatio(s.HorizontalSplit)
-	s.VerticalSplit = validSplitRatio(s.VerticalSplit)
+	s = normalizedSettings(s)
 
 	path, err := settingsPath()
 	if err != nil {
@@ -63,12 +68,40 @@ func saveSettings(s settings) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+func saveSplitRatio(layout splitLayout, ratio float64) error {
+	s := loadSettings()
+	s.setSplitRatio(layout, ratio)
+	return saveSettings(s)
+}
+
 func settingsPath() (string, error) {
 	dir, err := userConfigDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dir, "mux", configFileName), nil
+}
+
+func normalizedSettings(s settings) settings {
+	result := defaultSettings()
+	for layout, ratio := range s.SplitSizes {
+		result.setSplitRatio(layout, ratio)
+	}
+	return result
+}
+
+func (s settings) splitRatio(layout splitLayout) float64 {
+	if ratio, ok := s.SplitSizes[layout]; ok {
+		return validSplitRatio(ratio)
+	}
+	return defaultSplitRatio
+}
+
+func (s *settings) setSplitRatio(layout splitLayout, ratio float64) {
+	if s.SplitSizes == nil {
+		s.SplitSizes = make(map[splitLayout]float64)
+	}
+	s.SplitSizes[layout] = validSplitRatio(ratio)
 }
 
 func validSplitRatio(ratio float64) float64 {

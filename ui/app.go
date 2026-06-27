@@ -156,8 +156,8 @@ func NewModel(options ...ModelOption) Model {
 	settings := loadSettings()
 	m := Model{
 		tree:            newTreeState(),
-		horizontalSplit: settings.HorizontalSplit,
-		verticalSplit:   settings.VerticalSplit,
+		horizontalSplit: settings.splitRatio(layoutHorizontal),
+		verticalSplit:   settings.splitRatio(layoutVertical),
 	}
 	for _, option := range options {
 		option(&m)
@@ -436,10 +436,7 @@ func (m Model) resizeSplit(delta int) (tea.Model, tea.Cmd) {
 		m.horizontalSplit = ratio
 	}
 
-	_ = saveSettings(settings{
-		HorizontalSplit: m.horizontalSplit,
-		VerticalSplit:   m.verticalSplit,
-	})
+	_ = saveSplitRatio(m.splitLayout(), ratio)
 	return m, nil
 }
 
@@ -451,6 +448,13 @@ func (m Model) splitTotal() int {
 		return m.panelHeight()
 	}
 	return m.width
+}
+
+func (m Model) splitLayout() splitLayout {
+	if m.isVerticalLayout() {
+		return layoutVertical
+	}
+	return layoutHorizontal
 }
 
 func (m Model) isVerticalLayout() bool {
