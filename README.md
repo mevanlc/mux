@@ -104,6 +104,8 @@ Run `mux` to open the session manager. Use `j`/`k` to navigate, `Enter` to attac
 
 The left panel shows your sessions with AI badges and git branches. The right panel shows a **live preview** of the selected session's terminal output, updated every 500ms.
 
+Use `mux -v` or `mux --vertical` to stack the session list above the preview.
+
 ### Popup mode (recommended)
 
 Open mux as a floating overlay inside tmux — works even while AI CLIs are running in the foreground.
@@ -149,6 +151,7 @@ Pair with [skimd](https://github.com/lunemis/skimd) to review AI-generated markd
 | `g` / `G` | Jump to first / last |
 | `Tab` / `→` / `l` | Expand session → windows → panes |
 | `Shift+Tab` / `←` / `h` | Collapse one level |
+| `Shift+←↑↓→` | Resize panel split |
 | `Enter` | Attach (focuses the selected window/pane) |
 | `n` | Create new session |
 | `r` | Rename session |

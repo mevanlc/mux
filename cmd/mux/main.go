@@ -23,12 +23,17 @@ func main() {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 	rootCmd.SetVersionTemplate("mux {{.Version}}\n")
+	rootCmd.PersistentFlags().BoolP("vertical", "v", false, "stack panels vertically")
 
 	popupCmd := &cobra.Command{
 		Use:   "popup",
 		Short: "Open mux as a tmux popup overlay",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tmux.OpenPopup()
+			vertical, err := cmd.Flags().GetBool("vertical")
+			if err != nil {
+				return err
+			}
+			return tmux.OpenPopup(vertical)
 		},
 	}
 
@@ -95,7 +100,17 @@ func joinWith(parts []string, sep string) string {
 }
 
 func runTUI(cmd *cobra.Command, args []string) error {
-	p := tea.NewProgram(ui.NewModel(), tea.WithAltScreen())
+	vertical, err := cmd.Flags().GetBool("vertical")
+	if err != nil {
+		return err
+	}
+
+	var options []ui.ModelOption
+	if vertical {
+		options = append(options, ui.WithVerticalLayout())
+	}
+
+	p := tea.NewProgram(ui.NewModel(options...), tea.WithAltScreen())
 
 	result, err := p.Run()
 	if err != nil {

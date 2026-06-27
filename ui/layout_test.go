@@ -48,6 +48,37 @@ func TestLayoutDimensions(t *testing.T) {
 	}
 }
 
+func TestVerticalLayoutDimensions(t *testing.T) {
+	sessions := []tmux.Session{
+		{Name: "claude", WindowCount: 1, Created: time.Now().Add(-2 * time.Hour), Attached: true, Directory: "/Users/test/workspace/project1"},
+		{Name: "dev-server", WindowCount: 2, Created: time.Now().Add(-24 * time.Hour), Attached: false, Directory: "/Users/test/workspace/project2"},
+		{Name: "deploy", WindowCount: 1, Created: time.Now().Add(-48 * time.Hour), Attached: false, Directory: "/Users/test/workspace/project3"},
+	}
+
+	widths := []int{80, 120, 160, 200}
+	heights := []int{20, 30, 40, 50}
+
+	for _, w := range widths {
+		for _, h := range heights {
+			t.Run("", func(t *testing.T) {
+				m := NewModel(WithVerticalLayout())
+				m.width = w
+				m.height = h
+				m.sessions = sessions
+				m.filtered = sessions
+				m.cursor = 0
+
+				output := m.viewMain()
+				lines := strings.Split(output, "\n")
+
+				if len(lines) > h {
+					t.Errorf("w=%d h=%d: vertical output has %d lines, exceeds terminal height %d", w, h, len(lines), h)
+				}
+			})
+		}
+	}
+}
+
 func TestListPreviewSameHeight(t *testing.T) {
 	sessions := []tmux.Session{
 		{Name: "claude", WindowCount: 1, Created: time.Now(), Attached: true, Directory: "/Users/test/project"},
@@ -72,6 +103,20 @@ func TestListPreviewSameHeight(t *testing.T) {
 
 	if listLines != previewLines {
 		t.Errorf("height mismatch: list=%d preview=%d", listLines, previewLines)
+	}
+}
+
+func TestDrawBorderResetsBeforeRightBorder(t *testing.T) {
+	out := drawBorder("\x1b[1mhello", 12, 1)
+	lines := strings.Split(out, "\n")
+	if len(lines) != 3 {
+		t.Fatalf("drawBorder returned %d lines, want 3", len(lines))
+	}
+
+	contentIndex := strings.Index(lines[1], "\x1b[1mhello")
+	resetIndex := strings.LastIndex(lines[1], ansiReset)
+	if contentIndex < 0 || resetIndex < contentIndex {
+		t.Fatalf("content line does not reset before right border: %q", lines[1])
 	}
 }
 

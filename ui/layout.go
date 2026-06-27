@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+const ansiReset = "\x1b[0m"
+
 // padOrTruncate ensures a string is exactly `width` visible characters
 func padOrTruncate(s string, width int) string {
 	w := ansi.StringWidth(s)
@@ -64,12 +66,15 @@ func joinHorizontalFixed(left, right string) string {
 func drawBorder(content string, width, height int) string {
 	innerWidth := width - 2
 	lines := strings.Split(content, "\n")
+	borderStyle := lipgloss.NewStyle().Foreground(colorBorder)
+	leftBorder := borderStyle.Render("│")
+	rightBorder := borderStyle.Render("│")
 
 	// Build bordered output
 	result := make([]string, 0, height+2)
 
 	// Top border
-	result = append(result, "╭"+strings.Repeat("─", innerWidth)+"╮")
+	result = append(result, borderStyle.Render("╭"+strings.Repeat("─", innerWidth)+"╮"))
 
 	// Content lines (pad/truncate to exactly height)
 	for i := 0; i < height; i++ {
@@ -78,13 +83,11 @@ func drawBorder(content string, width, height int) string {
 			line = lines[i]
 		}
 		line = padOrTruncate(line, innerWidth)
-		result = append(result, "│"+line+"│")
+		result = append(result, leftBorder+line+ansiReset+rightBorder)
 	}
 
 	// Bottom border
-	result = append(result, "╰"+strings.Repeat("─", innerWidth)+"╯")
+	result = append(result, borderStyle.Render("╰"+strings.Repeat("─", innerWidth)+"╯"))
 
-	return lipgloss.NewStyle().
-		Foreground(colorBorder).
-		Render(strings.Join(result, "\n"))
+	return strings.Join(result, "\n")
 }

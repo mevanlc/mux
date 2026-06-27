@@ -29,7 +29,7 @@ const (
 
 // OpenPopup opens mux inside a tmux display-popup overlay.
 // Must be called from inside a tmux session.
-func OpenPopup() error {
+func OpenPopup(vertical bool) error {
 	if os.Getenv("TMUX") == "" {
 		return fmt.Errorf("mux popup must be run inside a tmux session")
 	}
@@ -47,11 +47,16 @@ func OpenPopup() error {
 		return fmt.Errorf("failed to find mux executable: %w", err)
 	}
 
+	popupCommand := muxPath
+	if vertical {
+		popupCommand += " --vertical"
+	}
+
 	cmd := exec.Command("tmux", "display-popup",
 		"-E",
 		"-w", popupWidth,
 		"-h", popupHeight,
-		muxPath,
+		popupCommand,
 	)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

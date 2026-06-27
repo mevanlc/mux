@@ -16,9 +16,9 @@ import (
 
 const (
 	// Layout
-	listWidthPercent = 2  // numerator of 5 (40%)
-	listWidthDenom   = 5  // denominator
-	minPanelHeight   = 5
+	defaultSplitRatio = 0.4
+	minPanelHeight    = 5
+	minSplitPaneSize  = 5
 
 	// Timing
 	refreshInterval = 500 * time.Millisecond
@@ -42,26 +42,39 @@ const (
 
 // Model is the top-level Bubble Tea model for the session manager TUI.
 type Model struct {
-	sessions       []tmux.Session
-	filtered       []tmux.Session
-	items          []listItem // flattened tree of (sessions, windows, panes)
-	tree           treeState
-	cursor         int
-	mode           mode
-	width          int
-	height         int
-	err            error
-	createModel      createModel
-	renameModel      renameModel
-	filterMod        filterModel
-	confirmKillMod   confirmKillModel
-	filterText       string
-	attachTarget     previewKey // set when we want to attach after quitting (zero value = no attach)
-	focusSession     string // session name to focus cursor on after next load
-	previewContent string           // cached capture-pane output
-	previewKey     previewKey       // (session, window, pane) the cache belongs to
-	tokenUsage     *tmux.TokenUsage // cached token usage for current AI session
-	tokenSession   string           // session name the token cache belongs to
+	sessions        []tmux.Session
+	filtered        []tmux.Session
+	items           []listItem // flattened tree of (sessions, windows, panes)
+	tree            treeState
+	cursor          int
+	mode            mode
+	width           int
+	height          int
+	vertical        bool
+	horizontalSplit float64
+	verticalSplit   float64
+	err             error
+	createModel     createModel
+	renameModel     renameModel
+	filterMod       filterModel
+	confirmKillMod  confirmKillModel
+	filterText      string
+	attachTarget    previewKey       // set when we want to attach after quitting (zero value = no attach)
+	focusSession    string           // session name to focus cursor on after next load
+	previewContent  string           // cached capture-pane output
+	previewKey      previewKey       // (session, window, pane) the cache belongs to
+	tokenUsage      *tmux.TokenUsage // cached token usage for current AI session
+	tokenSession    string           // session name the token cache belongs to
+}
+
+// ModelOption configures the TUI model.
+type ModelOption func(*Model)
+
+// WithVerticalLayout stacks the session list above the preview pane.
+func WithVerticalLayout() ModelOption {
+	return func(m *Model) {
+		m.vertical = true
+	}
 }
 
 type tickMsg time.Time
@@ -139,8 +152,17 @@ func loadTokenUsage(sessionName string, panePID int) tea.Cmd {
 }
 
 // NewModel returns a new Model with default settings.
-func NewModel() Model {
-	return Model{tree: newTreeState()}
+func NewModel(options ...ModelOption) Model {
+	settings := loadSettings()
+	m := Model{
+		tree:            newTreeState(),
+		horizontalSplit: settings.HorizontalSplit,
+		verticalSplit:   settings.VerticalSplit,
+	}
+	for _, option := range options {
+		option(&m)
+	}
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -258,6 +280,11 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 
+		case "shift+left", "shift+up":
+			return m.resizeSplit(-1)
+		case "shift+right", "shift+down":
+			return m.resizeSplit(1)
+
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -283,7 +310,7 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab", "left", "h":
 			return m.collapseCurrent()
 
-		case "enter":
+		case "enter", "a":
 			if it := m.currentItem(); it != nil {
 				m.attachTarget = previewKeyForItem(*it)
 				return m, tea.Quit
@@ -388,6 +415,87 @@ func (m *Model) refreshCurrentPreview() tea.Cmd {
 		return refreshPreview(previewKeyForItem(*it))
 	}
 	return nil
+}
+
+func (m Model) resizeSplit(delta int) (tea.Model, tea.Cmd) {
+	total := m.splitTotal()
+	if total <= 1 {
+		return m, nil
+	}
+
+	ratio := m.horizontalSplit
+	if m.vertical {
+		ratio = m.verticalSplit
+	}
+
+	size := splitPaneSize(total, ratio) + delta
+	ratio = splitRatioForSize(total, size)
+	if m.vertical {
+		m.verticalSplit = ratio
+	} else {
+		m.horizontalSplit = ratio
+	}
+
+	_ = saveSettings(settings{
+		HorizontalSplit: m.horizontalSplit,
+		VerticalSplit:   m.verticalSplit,
+	})
+	return m, nil
+}
+
+func (m Model) splitTotal() int {
+	if m.vertical {
+		if m.height == 0 {
+			return 0
+		}
+		return m.panelHeight()
+	}
+	return m.width
+}
+
+func (m Model) panelHeight() int {
+	chrome := 3
+	if m.mode == modeFilter || m.mode == modeConfirmKill || m.filterText != "" {
+		chrome++
+	}
+
+	height := m.height - chrome
+	if height < minPanelHeight {
+		return minPanelHeight
+	}
+	return height
+}
+
+func splitPaneSize(total int, ratio float64) int {
+	if total <= 1 {
+		return total
+	}
+	if ratio <= 0 || ratio >= 1 {
+		ratio = defaultSplitRatio
+	}
+
+	size := int(float64(total)*ratio + 0.5)
+	return clampSplitPaneSize(total, size)
+}
+
+func splitRatioForSize(total, size int) float64 {
+	if total <= 1 {
+		return defaultSplitRatio
+	}
+	return float64(clampSplitPaneSize(total, size)) / float64(total)
+}
+
+func clampSplitPaneSize(total, size int) int {
+	minSize := minSplitPaneSize
+	if total < minSize*2 {
+		minSize = 1
+	}
+
+	maxSize := total - minSize
+	if maxSize < minSize {
+		return max(1, total/2)
+	}
+	return min(max(size, minSize), maxSize)
 }
 
 // findItemIndex returns the index of the matching listItem, or -1 if not found.
@@ -535,24 +643,8 @@ func (m Model) viewMain() string {
 		extraBar = helpStyle.Render(fmt.Sprintf("filter: %s (esc clear)", m.filterText))
 	}
 
-	// Chrome: title(1+margin1) + help(1) + extraBar(0 or 1)
-	chrome := 3
-	if extraBar != "" {
-		chrome++
-	}
-
 	// Panel height = total height for both borders + content
-	panelHeight := m.height - chrome
-	if panelHeight < minPanelHeight {
-		panelHeight = minPanelHeight
-	}
-
-	// Layout: list on left, preview on right
-	listWidth := m.width * listWidthPercent / listWidthDenom
-	previewWidth := m.width - listWidth
-
-	// Render both panels (each returns exactly panelHeight lines)
-	list := renderListView(m.items, m.cursor, m.filterText, &m.tree, listWidth, panelHeight)
+	panelHeight := m.panelHeight()
 
 	currentItem := m.currentItem()
 	currentSession := m.currentSession()
@@ -564,10 +656,27 @@ func (m Model) viewMain() string {
 	if currentSession != nil && m.tokenSession == currentSession.Name {
 		tokenUsage = m.tokenUsage
 	}
-	preview := renderPreview(currentItem, cachedContent, previewWidth, panelHeight, tokenUsage)
 
-	// Join line-by-line for exact alignment
-	content := joinHorizontalFixed(list, preview)
+	var content string
+	if m.vertical {
+		listHeight := splitPaneSize(panelHeight, m.verticalSplit)
+		previewHeight := panelHeight - listHeight
+
+		list := renderListView(m.items, m.cursor, m.filterText, &m.tree, m.width, listHeight)
+		preview := renderPreview(currentItem, cachedContent, m.width, previewHeight, tokenUsage)
+		content = list + "\n" + preview
+	} else {
+		// Layout: list on left, preview on right
+		listWidth := splitPaneSize(m.width, m.horizontalSplit)
+		previewWidth := m.width - listWidth
+
+		// Render both panels (each returns exactly panelHeight lines)
+		list := renderListView(m.items, m.cursor, m.filterText, &m.tree, listWidth, panelHeight)
+		preview := renderPreview(currentItem, cachedContent, previewWidth, panelHeight, tokenUsage)
+
+		// Join line-by-line for exact alignment
+		content = joinHorizontalFixed(list, preview)
+	}
 
 	// Assemble
 	var b strings.Builder
@@ -598,10 +707,8 @@ func (m Model) viewWithOverlay(overlay string) string {
 
 func renderHelp() string {
 	keys := []struct{ key, desc string }{
-		{"↑↓/jk", "navigate"},
-		{"tab", "expand"},
-		{"⇧tab", "collapse"},
-		{"enter", "attach"},
+		{"←↑↓→", "nav"},
+		{"a", "attach"},
 		{"n", "new"},
 		{"x", "kill"},
 		{"r", "rename"},
@@ -614,7 +721,7 @@ func renderHelp() string {
 		parts = append(parts,
 			helpKeyStyle.Render(k.key)+" "+helpStyle.Render(k.desc))
 	}
-	return strings.Join(parts, helpStyle.Render("  •  "))
+	return strings.Join(parts, helpStyle.Render(" • "))
 }
 
 // AttachName returns the session name to attach to (if any) after the TUI
