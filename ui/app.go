@@ -300,7 +300,7 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "ctrl+c":
+		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 
 		case "shift+left", "shift+up":
@@ -362,11 +362,6 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filterMod = newFilterModel(m.filterText)
 			return m, nil
 
-		case "esc":
-			if m.filterText != "" {
-				m.filterText = ""
-				m.applyFilter()
-			}
 		}
 	}
 	return m, nil
@@ -688,7 +683,7 @@ func (m Model) viewMain() string {
 	} else if m.mode == modeConfirmKill {
 		extraBar = m.confirmKillMod.View()
 	} else if m.filterText != "" {
-		extraBar = helpStyle.Render(fmt.Sprintf("filter: %s (esc clear)", m.filterText))
+		extraBar = helpStyle.Render(fmt.Sprintf("filter: %s", m.filterText))
 	}
 
 	// Panel height = total height for both borders + content
@@ -761,7 +756,7 @@ func renderHelp() string {
 		{"x", "kill"},
 		{"r", "rename"},
 		{"/", "filter"},
-		{"q", "quit"},
+		{"q/esc", "quit"},
 	}
 
 	var parts []string

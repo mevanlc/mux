@@ -98,7 +98,7 @@ go install github.com/lunemis/mux/cmd/mux@latest
 
 ### Basic
 
-Run `mux` to open the session manager. Use `j`/`k` to navigate, `Enter` to attach, `q` to quit.
+Run `mux` to open the session manager. Use `j`/`k` to navigate, `Enter` to attach, `q`/`Esc` to quit.
 
 ![Screenshot](assets/screenshot.png)
 
@@ -157,8 +157,7 @@ Pair with [skimd](https://github.com/lunemis/skimd) to review AI-generated markd
 | `r` | Rename session |
 | `x` | Delete session (with confirmation) |
 | `/` | Filter sessions by name or path |
-| `Esc` | Clear filter / cancel |
-| `q` | Quit |
+| `q` / `Esc` | Quit |
 
 ## Requirements
 

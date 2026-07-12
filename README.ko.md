@@ -76,7 +76,7 @@ go install github.com/lunemis/mux/cmd/mux@latest
 
 ### 기본
 
-`mux`를 실행하면 세션 매니저가 열립니다. `j`/`k`로 탐색, `Enter`로 attach, `q`로 종료.
+`mux`를 실행하면 세션 매니저가 열립니다. `j`/`k`로 탐색, `Enter`로 attach, `q`/`Esc`로 종료.
 
 ![Screenshot](assets/screenshot.png)
 
@@ -137,8 +137,7 @@ AI 세션이 활성화되면 `✦ ◈` 같은 아이콘이 상태바에 표시�
 | `r` | 세션 이름 변경 |
 | `x` | 세션 삭제 (확인 후) |
 | `/` | 세션 필터링 |
-| `Esc` | 필터 초기화 / 모드 취소 |
-| `q` | 종료 |
+| `q` / `Esc` | 종료 |
 
 ## 요구사항
 
