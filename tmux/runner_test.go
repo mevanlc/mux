@@ -65,9 +65,9 @@ func TestListSessionsWithMock(t *testing.T) {
 
 		// Mock the list-sessions call
 		m.OnOutput([]byte(out), nil, "tmux", "list-sessions", "-F", listFormat)
-		// Mock resolveCommand calls — pgrep returns nothing (so rawCmd is used)
+		// Mock resolveCommand calls — ps and pgrep find no AI command, so rawCmd is used.
+		m.OnOutput([]byte("bash\n"), nil, "ps", "-o", "comm=", "-p", "100")
 		m.OnOutput(nil, fmt.Errorf("no children"), "pgrep", "-P", "100")
-		m.OnOutput(nil, fmt.Errorf("no children"), "pgrep", "-P", "200")
 
 		sessions, err := ListSessions()
 		if err != nil {
@@ -85,6 +85,8 @@ func TestListSessionsWithMock(t *testing.T) {
 
 func TestResolveCommandWithMock(t *testing.T) {
 	withMock(t, func(m *mockRunner) {
+		// The pane process is not itself an AI command.
+		m.OnOutput([]byte("bash\n"), nil, "ps", "-o", "comm=", "-p", "100")
 		// pgrep returns child PIDs
 		m.OnOutput([]byte("42\n43\n"), nil, "pgrep", "-P", "100")
 		// ps for PID 42 returns bash

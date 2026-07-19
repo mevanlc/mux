@@ -69,3 +69,14 @@ func TestResolveCommandDirectAI(t *testing.T) {
 		t.Errorf("expected 'claude', got %q", result)
 	}
 }
+
+func TestResolveCommandDetectsAIFromPanePID(t *testing.T) {
+	withMock(t, func(m *mockRunner) {
+		m.OnOutput([]byte("claude\n"), nil, "ps", "-o", "comm=", "-p", "80346")
+
+		result := resolveCommand(80346, "2.1.215")
+		if result != "claude" {
+			t.Errorf("expected 'claude', got %q", result)
+		}
+	})
+}

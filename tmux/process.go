@@ -38,7 +38,10 @@ func resolveCommand(panePID int, rawCmd string) string {
 	}
 	cmdCacheMu.Unlock()
 
-	result := scanChildProcesses(panePID, rawCmd)
+	result := detectAICommandForPID(panePID)
+	if result == "" {
+		result = scanChildProcesses(panePID, rawCmd)
+	}
 
 	cmdCacheMu.Lock()
 	cmdCache[panePID] = cachedCommand{
@@ -48,6 +51,23 @@ func resolveCommand(panePID int, rawCmd string) string {
 	cmdCacheMu.Unlock()
 
 	return result
+}
+
+// detectAICommandForPID inspects the executable name for a process. This
+// catches tools such as Claude that may change the command name reported by
+// tmux while retaining their executable name in ps output.
+func detectAICommandForPID(pid int) string {
+	pidStr := fmt.Sprintf("%d", pid)
+	out, err := runner.Output("ps", "-o", "comm=", "-p", pidStr)
+	if err != nil {
+		return ""
+	}
+
+	cmd := filepath.Base(strings.TrimSpace(string(out)))
+	if IsAICommand(cmd) {
+		return cmd
+	}
+	return ""
 }
 
 // scanChildProcesses inspects child processes of the pane shell to detect AI CLIs.
