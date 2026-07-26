@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/lunemis/mux/tmux"
 )
 
@@ -104,24 +105,29 @@ func formatItemRow(it listItem, selected bool, width int, t *treeState) string {
 }
 
 func formatSessionRow(s tmux.Session, expanded, selected bool, width int) string {
-	prefix, name, suffix, rowWidth := sessionRowParts(s, expanded, width)
-	nameWidth := max(0, rowWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix))
-	row := padOrTruncate(prefix+padOrTruncate(name, nameWidth)+suffix, rowWidth)
+	row := layoutSessionRow(s, expanded, width)
 
 	if selected {
-		return lipgloss.NewStyle().
+		style := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(colorCursor).
-			Background(colorSelected).
-			Render(row)
+			Background(colorSelected)
+		return renderSessionRow(row, style)
 	}
 
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#9CA3AF")).
-		Render(row)
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+	return renderSessionRow(row, style)
 }
 
-func sessionRowParts(s tmux.Session, expanded bool, width int) (prefix, name, suffix string, rowWidth int) {
+type sessionRowLayout struct {
+	text      string
+	width     int
+	icon      string
+	iconColor string
+	iconStart int
+}
+
+func layoutSessionRow(s tmux.Session, expanded bool, width int) sessionRowLayout {
 	chevron := "▶"
 	if expanded {
 		chevron = "▼"
@@ -135,24 +141,43 @@ func sessionRowParts(s tmux.Session, expanded bool, width int) (prefix, name, su
 	ago := timeAgo(s.Created)
 
 	icon, iconColor := commandIconPlain(s.ActiveCommand)
-	var styledIcon string
-	extraWidth := 0
-	if iconColor != "" {
-		styledIcon = " " + lipgloss.NewStyle().Foreground(lipgloss.Color(iconColor)).Render(icon)
-		extraWidth = 1
-	}
-
 	branch := ""
 	if s.GitBranch != "" {
 		branch = " " + s.GitBranch
 	}
 
-	rowWidth = max(0, width-extraWidth)
-	prefix = fmt.Sprintf("%s %s ", chevron, status)
-	suffix = " " + ago + styledIcon + branch
+	rowWidth := max(0, width)
+	prefix := fmt.Sprintf("%s %s ", chevron, status)
+	age := " " + ago
+	suffix := age
+	if icon != "" {
+		suffix += " " + icon
+	}
+	suffix += branch
 	nameWidth := max(0, rowWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix))
-	name = truncateWithEllipsis(s.Name, nameWidth)
-	return prefix, name, suffix, rowWidth
+	name := padOrTruncate(truncateWithEllipsis(s.Name, nameWidth), nameWidth)
+	text := padOrTruncate(prefix+name+suffix, rowWidth)
+
+	return sessionRowLayout{
+		text:      text,
+		width:     rowWidth,
+		icon:      icon,
+		iconColor: iconColor,
+		iconStart: lipgloss.Width(prefix) + nameWidth + lipgloss.Width(age) + 1,
+	}
+}
+
+func renderSessionRow(row sessionRowLayout, style lipgloss.Style) string {
+	iconEnd := row.iconStart + lipgloss.Width(row.icon)
+	if row.iconColor == "" || row.icon == "" || iconEnd > row.width ||
+		ansi.Cut(row.text, row.iconStart, iconEnd) != row.icon {
+		return style.Render(row.text)
+	}
+
+	beforeIcon := ansi.Cut(row.text, 0, row.iconStart)
+	afterIcon := ansi.Cut(row.text, iconEnd, row.width)
+	iconStyle := style.Foreground(lipgloss.Color(row.iconColor))
+	return style.Render(beforeIcon) + iconStyle.Render(row.icon) + style.Render(afterIcon)
 }
 
 func formatWindowRow(w *tmux.Window, expanded, selected bool, width int) string {

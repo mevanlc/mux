@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/lunemis/mux/tmux"
+	"github.com/muesli/termenv"
 )
 
 func TestLayoutDimensions(t *testing.T) {
@@ -182,6 +184,28 @@ func TestSessionNameTruncatesToNarrowRowWidth(t *testing.T) {
 	}
 	if got := ansi.StringWidth(row); got != 24 {
 		t.Fatalf("row width = %d, want 24", got)
+	}
+}
+
+func TestSelectedSessionRowHighlightsFullWidthWithAIIcon(t *testing.T) {
+	oldProfile := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	t.Cleanup(func() {
+		lipgloss.SetColorProfile(oldProfile)
+	})
+
+	row := formatSessionRow(tmux.Session{
+		Name:          "claude-session",
+		Created:       time.Now(),
+		ActiveCommand: "claude",
+		GitBranch:     "feature-branch",
+	}, false, true, 60)
+
+	if got := ansi.StringWidth(row); got != 60 {
+		t.Fatalf("selected row width = %d, want 60", got)
+	}
+	if got := strings.Count(row, ansiReset); got < 3 {
+		t.Fatalf("selected row should reapply its background around the colored icon; got %d styled segments: %q", got, row)
 	}
 }
 
