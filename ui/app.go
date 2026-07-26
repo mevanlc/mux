@@ -363,8 +363,44 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		}
+	case tea.MouseMsg:
+		mouse := tea.MouseEvent(msg)
+		if mouse.Button != tea.MouseButtonLeft || mouse.Action != tea.MouseActionPress {
+			return m, nil
+		}
+
+		listX, listY, listWidth, listHeight := m.listPanelBounds()
+		idx := hitTestSessionRow(
+			m.items,
+			m.cursor,
+			mouse.X-listX,
+			mouse.Y-listY,
+			listWidth,
+			listHeight,
+		)
+		if idx >= 0 {
+			m.cursor = idx
+			return m, m.refreshCurrentPreview()
+		}
 	}
 	return m, nil
+}
+
+func (m Model) listPanelBounds() (x, y, width, height int) {
+	y = 1 // title
+	if m.hasExtraBar() {
+		y++
+	}
+
+	panelHeight := m.panelHeight()
+	if m.isVerticalLayout() {
+		return 0, y, m.width, splitPaneSize(panelHeight, m.verticalSplit)
+	}
+	return 0, y, splitPaneSize(m.width, m.horizontalSplit), panelHeight
+}
+
+func (m Model) hasExtraBar() bool {
+	return m.mode == modeFilter || m.mode == modeConfirmKill || m.filterText != ""
 }
 
 // expandCurrent expands the row under the cursor and dispatches the loader.
@@ -498,7 +534,7 @@ func autoVerticalLayout(width, height int) bool {
 
 func (m Model) panelHeight() int {
 	chrome := 3
-	if m.mode == modeFilter || m.mode == modeConfirmKill || m.filterText != "" {
+	if m.hasExtraBar() {
 		chrome++
 	}
 

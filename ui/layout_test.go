@@ -263,6 +263,33 @@ func TestSessionListScrolling(t *testing.T) {
 	}
 }
 
+func TestSessionRowHitTestAccountsForScrolling(t *testing.T) {
+	sessions := make([]tmux.Session, 10)
+	items := make([]listItem, len(sessions))
+	for i := range sessions {
+		sessions[i].Name = fmt.Sprintf("session-%02d", i)
+		items[i] = listItem{kind: itemSession, session: &sessions[i]}
+	}
+
+	// The four-row viewport starts at item 4 when the cursor is on item 7.
+	if got := hitTestSessionRow(items, 7, 38, 1, 40, 6); got != 4 {
+		t.Fatalf("hit item = %d, want 4", got)
+	}
+}
+
+func TestSessionRowHitTestRejectsChildRows(t *testing.T) {
+	session := tmux.Session{Name: "session"}
+	window := tmux.Window{Index: 0, Name: "window"}
+	items := []listItem{
+		{kind: itemSession, session: &session},
+		{kind: itemWindow, session: &session, window: &window},
+	}
+
+	if got := hitTestSessionRow(items, 0, 38, 2, 40, 6); got != -1 {
+		t.Fatalf("hit item = %d, want -1 for child row", got)
+	}
+}
+
 func truncStr(s string, n int) string {
 	if len(s) <= n {
 		return s

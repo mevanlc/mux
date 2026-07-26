@@ -38,10 +38,7 @@ func renderListView(items []listItem, cursor int, filter string, t *treeState, w
 		return drawBorder(content, width, innerHeight)
 	}
 
-	offset := 0
-	if cursor >= innerHeight {
-		offset = cursor - innerHeight + 1
-	}
+	offset := listViewportOffset(cursor, innerHeight)
 
 	lines := make([]string, innerHeight)
 	for i := 0; i < innerHeight; i++ {
@@ -55,6 +52,30 @@ func renderListView(items []listItem, cursor int, filter string, t *treeState, w
 
 	content := strings.Join(lines, "\n")
 	return drawBorder(content, width, innerHeight)
+}
+
+func listViewportOffset(cursor, innerHeight int) int {
+	if innerHeight > 0 && cursor >= innerHeight {
+		return cursor - innerHeight + 1
+	}
+	return 0
+}
+
+// hitTestSessionRow returns the item index whose visible session row contains
+// the panel-local coordinates. Borders and window/pane child rows are not
+// clickable.
+func hitTestSessionRow(items []listItem, cursor, x, y, width, height int) int {
+	innerWidth := width - 2
+	innerHeight := height - 2
+	if innerWidth <= 0 || innerHeight <= 0 || x <= 0 || x >= width-1 || y <= 0 || y >= height-1 {
+		return -1
+	}
+
+	idx := listViewportOffset(cursor, innerHeight) + y - 1
+	if idx < 0 || idx >= len(items) || items[idx].kind != itemSession {
+		return -1
+	}
+	return idx
 }
 
 // renderSessionList preserves the legacy session-only renderer for tests and
@@ -83,6 +104,24 @@ func formatItemRow(it listItem, selected bool, width int, t *treeState) string {
 }
 
 func formatSessionRow(s tmux.Session, expanded, selected bool, width int) string {
+	prefix, name, suffix, rowWidth := sessionRowParts(s, expanded, width)
+	nameWidth := max(0, rowWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix))
+	row := padOrTruncate(prefix+padOrTruncate(name, nameWidth)+suffix, rowWidth)
+
+	if selected {
+		return lipgloss.NewStyle().
+			Bold(true).
+			Foreground(colorCursor).
+			Background(colorSelected).
+			Render(row)
+	}
+
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#9CA3AF")).
+		Render(row)
+}
+
+func sessionRowParts(s tmux.Session, expanded bool, width int) (prefix, name, suffix string, rowWidth int) {
 	chevron := "▶"
 	if expanded {
 		chevron = "▼"
@@ -108,24 +147,12 @@ func formatSessionRow(s tmux.Session, expanded, selected bool, width int) string
 		branch = " " + s.GitBranch
 	}
 
-	rowWidth := max(0, width-extraWidth)
-	prefix := fmt.Sprintf("%s %s ", chevron, status)
-	suffix := " " + ago + styledIcon + branch
+	rowWidth = max(0, width-extraWidth)
+	prefix = fmt.Sprintf("%s %s ", chevron, status)
+	suffix = " " + ago + styledIcon + branch
 	nameWidth := max(0, rowWidth-lipgloss.Width(prefix)-lipgloss.Width(suffix))
-	name := padOrTruncate(truncateWithEllipsis(s.Name, nameWidth), nameWidth)
-	row := padOrTruncate(prefix+name+suffix, rowWidth)
-
-	if selected {
-		return lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorCursor).
-			Background(colorSelected).
-			Render(row)
-	}
-
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#9CA3AF")).
-		Render(row)
+	name = truncateWithEllipsis(s.Name, nameWidth)
+	return prefix, name, suffix, rowWidth
 }
 
 func formatWindowRow(w *tmux.Window, expanded, selected bool, width int) string {

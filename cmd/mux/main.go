@@ -115,7 +115,11 @@ func runTUI(cmd *cobra.Command, args []string) error {
 
 	options := []ui.ModelOption{ui.WithLayoutMode(layoutMode)}
 
-	p := tea.NewProgram(ui.NewModel(options...), tea.WithAltScreen())
+	p := tea.NewProgram(
+		ui.NewModel(options...),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 
 	result, err := p.Run()
 	if err != nil {
