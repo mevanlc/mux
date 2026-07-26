@@ -104,7 +104,7 @@ Run `mux` to open the session manager. Use `j`/`k` to navigate, `Enter` to attac
 
 The left panel shows your sessions with AI badges and git branches. The right panel shows a **live preview** of the selected session's terminal output, updated every 500ms.
 
-By default, `mux` automatically stacks the session list above the preview when the terminal is closer to 1:1 than 16:9, and switches back to side-by-side when it is closer to 16:9. Use `mux --layout vertical` (or `mux --layout v`) to force the stacked layout, `mux --layout horizontal` (or `mux --layout h`) to force side-by-side, and `mux --layout auto` (or `mux --layout a`) for automatic layout.
+By default, `mux` automatically stacks the session list above the preview when the terminal is closer to 1:1 than 16:9, and switches back to side-by-side when it is closer to 16:9. Use `--layout` (or `-l`) to override it: `mux -l vertical` (or `mux -l v`) forces the stacked layout, `mux -l horizontal` (or `mux -l h`) forces side-by-side, and `mux -l auto` (or `mux -l a`) restores automatic layout.
 
 ### Popup mode (recommended)
 

@@ -23,7 +23,7 @@ func main() {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 	rootCmd.SetVersionTemplate("mux {{.Version}}\n")
-	rootCmd.PersistentFlags().String("layout", "auto", "layout mode: auto/a, horizontal/h, or vertical/v")
+	rootCmd.PersistentFlags().StringP("layout", "l", "auto", "layout mode: auto/a, horizontal/h, or vertical/v")
 
 	popupCmd := &cobra.Command{
 		Use:   "popup",
