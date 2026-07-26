@@ -1,175 +1,91 @@
-# mux
+# a mux fork
 
-**Switch between AI CLI sessions without breaking your flow.**
+This is a fork of [mux](https://github.com/lunemis/mux), a terminal UI for
+previewing, managing, and switching between tmux sessions. See the
+[upstream repository](https://github.com/lunemis/mux) for general installation
+and usage documentation.
 
-Running Claude in one session, Codex in another, and a dev server in a third? Switching between them means detaching, listing sessions, remembering which is which, and reattaching. mux eliminates that friction — see every session's live output at a glance, spot which AI tools are active, and switch in a keystroke.
+## about this fork
 
-[한국어](README.ko.md)
+This fork adds:
 
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
+- responsive stacked and side-by-side layouts, with explicit layout overrides;
+- keyboard- and mouse-adjustable panel splits that persist independently for
+  each layout;
+- mouse session selection and clearer full-row selection highlighting; and
+- more reliable AI CLI detection plus `Esc` as a main-list quit key.
 
-![Demo](assets/demo.gif)
+### responsive layouts
 
-## The Problem
+The default `auto` mode chooses between a horizontal, side-by-side layout and a
+vertical layout with the session list stacked above the preview. It uses the
+terminal's aspect ratio, accounting for terminal cells being taller than they
+are wide: near-square terminals stack the panels, while terminals closer to
+16:9 keep them side by side.
 
-In the age of AI-powered development, a typical workflow looks like:
+Use `--layout` or `-l` to override the choice. The flag is case-insensitive and
+accepts these values:
 
-- **Session 1**: Claude Code working on your feature
-- **Session 2**: Codex reviewing your test suite
-- **Session 3**: Dev server running your app
-- **Session 4**: Another Claude session refactoring a different module
-
-tmux's built-in `choose-session` shows you a list of names — but which session has Claude waiting for your input? Which one is still running? You end up cycling through sessions blindly.
-
-## How mux solves it
-
-### Live preview — every window and pane
-See the actual terminal output of any session *before* you switch. Press `Tab` to expand a session into its windows, expand again to peek into individual panes — preview each one without attaching.
-
-### AI CLI detection
-`claude`, `codex`, `aider`, `gemini` are automatically detected and highlighted with badges — instantly find the right session.
-
-### Git branch & worktree display
-Each session shows its current git branch. Linked worktrees are visually distinguished so you can tell at a glance which sessions are working on isolated branches.
-
-### Cost & token tracking
-For Claude Code sessions, mux reads session logs to display real-time token usage and estimated cost — no configuration needed.
-
-### Popup overlay
-Press one key to summon mux on top of whatever you're doing — even mid-conversation with an AI CLI. Pick a session and you're there.
-
-![Popup mode](assets/popup.gif)
-
-### Vim-style navigation
-`j`/`k` to browse, `/` to filter, `Enter` to attach. No mouse needed.
-
-## Quick Start
-
-```bash
-# One-line interactive installer (recommended)
-curl -sSL https://raw.githubusercontent.com/lunemis/mux/main/install.sh | bash
-
-# Or install manually
-brew install lunemis/tap/mux   # or: go install github.com/lunemis/mux/cmd/mux@latest
-mux                             # launch the session manager
+```text
+auto       a
+horizontal h
+vertical   v
 ```
 
-For the best experience, set up popup mode (opens mux as a floating overlay):
+For example:
 
 ```bash
-mux setup-keybind               # binds prefix + m
-tmux source-file ~/.tmux.conf   # reload config
+mux -l vertical
+mux popup --layout horizontal
 ```
 
-Now press `Ctrl+b` then `m` anywhere in tmux to open mux.
+The layout flag controls only panel orientation. It does not change the popup's
+size.
 
-## Installation
+### adjustable panel splits
 
-### Interactive installer (recommended)
+The session list initially receives 40% of the available width in horizontal
+layout or 40% of the available height in vertical layout. Resize it one terminal
+cell at a time with `Shift+Left`/`Shift+Up` to shrink it and
+`Shift+Right`/`Shift+Down` to grow it. You can also drag the divider with the
+left mouse button.
 
-The installer guides you through binary installation and keybinding setup:
+mux keeps separate split positions for horizontal and vertical layouts and
+saves changes in `mux/config.json` under the operating system's user
+configuration directory. Each panel is kept at least five cells wide or high
+when the available space permits.
+
+### mouse and selection behavior
+
+Click a visible session row to select it and refresh its preview. The selected
+session's background now spans the full list width, including the padding around
+AI badges, which makes the active row unambiguous.
+
+Mouse clicks select session rows only; window and pane rows still use keyboard
+navigation.
+
+### AI detection and quitting
+
+In addition to tmux's reported command and child-process arguments, mux checks
+the pane process's executable name. This preserves detection when a supported
+AI tool changes the command text reported by tmux. Detection remains
+case-sensitive and recognizes `claude`, `codex`, `aider`, and `gemini`.
+
+In the main session list, `Esc` now quits just like `q` or `Ctrl+C`. In filters,
+editors, and confirmation overlays, `Esc` retains its cancel behavior.
+
+## building
+
+Building requires Go 1.24.2 or newer. tmux is required at runtime; mux supports
+Linux and macOS.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/lunemis/mux/main/install.sh | bash
+make build
 ```
 
-### Homebrew
+This creates `./mux`. Run `make install` to install it under
+`$PREFIX/bin` (`/usr/local/bin` by default).
 
-```bash
-brew install lunemis/tap/mux
-```
+## license
 
-### From source
-
-```bash
-git clone https://github.com/lunemis/mux.git
-cd mux
-make install   # builds and installs to /usr/local/bin
-```
-
-### Go install
-
-```bash
-go install github.com/lunemis/mux/cmd/mux@latest
-```
-
-## Usage
-
-### Basic
-
-Run `mux` to open the session manager. Use `j`/`k` to navigate, `Enter` to attach, `q`/`Esc` to quit.
-
-![Screenshot](assets/screenshot.png)
-
-The left panel shows your sessions with AI badges and git branches. The right panel shows a **live preview** of the selected session's terminal output, updated every 500ms.
-
-By default, `mux` automatically stacks the session list above the preview when the terminal is closer to 1:1 than 16:9, and switches back to side-by-side when it is closer to 16:9. Use `--layout` (or `-l`) to override it: `mux -l vertical` (or `mux -l v`) forces the stacked layout, `mux -l horizontal` (or `mux -l h`) forces side-by-side, and `mux -l auto` (or `mux -l a`) restores automatic layout.
-
-### Popup mode (recommended)
-
-Open mux as a floating overlay inside tmux — works even while AI CLIs are running in the foreground.
-
-```bash
-# Set up the keybinding (one-time)
-mux setup-keybind          # prefix + m (default)
-mux setup-keybind Space    # or use a different key
-
-# Reload tmux config
-tmux source-file ~/.tmux.conf
-```
-
-You can also open the popup manually with `mux popup`.
-
-> **Note:** Popup mode requires tmux 3.2+
-
-### Statusbar widget
-
-Show AI session icons in your tmux status bar without opening the TUI:
-
-```bash
-# Add to ~/.tmux.conf
-set -g status-right '#(mux status)'
-```
-
-This runs `mux status` which outputs a compact summary like `✦ ◈` when AI sessions are active.
-
-### Works with skimd
-
-Pair with [skimd](https://github.com/lunemis/skimd) to review AI-generated markdown docs without leaving tmux.
-
-- `prefix+m` → **mux** — switch sessions
-- `prefix+v` → **skimd** — skim documents
-
-![mux + skimd workflow](assets/workflow.gif)
-
-### Keybindings
-
-| Key | Action |
-|---|---|
-| `j` / `k` | Move down / up |
-| `g` / `G` | Jump to first / last |
-| `Tab` / `→` / `l` | Expand session → windows → panes |
-| `Shift+Tab` / `←` / `h` | Collapse one level |
-| `Shift+←↑↓→` | Resize panel split |
-| Drag the panel divider | Resize panel split |
-| Click a session row | Select that session |
-| `Enter` | Attach (focuses the selected window/pane) |
-| `n` | Create new session |
-| `r` | Rename session |
-| `x` | Delete session (with confirmation) |
-| `/` | Filter sessions by name or path |
-| `q` / `Esc` | Quit |
-
-## Requirements
-
-- tmux (popup mode requires 3.2+)
-- Linux or macOS
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-[MIT](LICENSE)
+This fork is distributed under the [MIT License](LICENSE).
