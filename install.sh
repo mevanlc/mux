@@ -73,7 +73,19 @@ install_binary() {
     if command -v go &>/dev/null; then
         if ask "  Go detected. Use 'go install'?"; then
             go install "github.com/${REPO}/cmd/${BINARY}@latest"
-            ok "${BINARY} installed via go install"
+            if command -v "${BINARY}" &>/dev/null; then
+                ok "${BINARY} installed via go install"
+            else
+                # go install succeeded but the binary isn't on PATH.
+                # This is common when GOPATH/bin (or GOBIN) is not in PATH.
+                local gobin
+                gobin="$(go env GOBIN)"
+                [ -z "$gobin" ] && gobin="$(go env GOPATH)/bin"
+                ok "${BINARY} installed to ${gobin}/${BINARY}"
+                warn "${gobin} is not on your PATH"
+                warn "  Add this to your shell config (e.g. ~/.zshrc or ~/.bashrc):"
+                warn "  export PATH=\"${gobin}:\$PATH\""
+            fi
             return
         fi
     fi
