@@ -152,6 +152,7 @@ Pair with [skimd](https://github.com/lunemis/skimd) to review AI-generated markd
 | `Tab` / `→` / `l` | Expand session → windows → panes |
 | `Shift+Tab` / `←` / `h` | Collapse one level |
 | `Shift+←↑↓→` | Resize panel split |
+| Drag the panel divider | Resize panel split |
 | Click a session row | Select that session |
 | `Enter` | Attach (focuses the selected window/pane) |
 | `n` | Create new session |

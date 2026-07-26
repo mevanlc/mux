@@ -87,6 +87,14 @@ type Model struct {
 	previewKey      previewKey       // (session, window, pane) the cache belongs to
 	tokenUsage      *tmux.TokenUsage // cached token usage for current AI session
 	tokenSession    string           // session name the token cache belongs to
+	splitResizeDrag *splitResizeDrag // active mouse drag of the panel divider
+}
+
+type splitResizeDrag struct {
+	layout     splitLayout
+	origin     int
+	total      int
+	grabOffset int
 }
 
 // ModelOption configures the TUI model.
@@ -197,6 +205,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.splitResizeDrag = nil
 		return m, nil
 
 	case tickMsg:
@@ -365,22 +374,41 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.MouseMsg:
 		mouse := tea.MouseEvent(msg)
-		if mouse.Button != tea.MouseButtonLeft || mouse.Action != tea.MouseActionPress {
-			return m, nil
-		}
+		switch {
+		case mouse.Button == tea.MouseButtonLeft && mouse.Action == tea.MouseActionPress:
+			if m.splitDividerHit(mouse.X, mouse.Y) {
+				m.beginSplitResize(mouse.X, mouse.Y)
+				return m, nil
+			}
 
-		listX, listY, listWidth, listHeight := m.listPanelBounds()
-		idx := hitTestSessionRow(
-			m.items,
-			m.cursor,
-			mouse.X-listX,
-			mouse.Y-listY,
-			listWidth,
-			listHeight,
-		)
-		if idx >= 0 {
-			m.cursor = idx
-			return m, m.refreshCurrentPreview()
+			listX, listY, listWidth, listHeight := m.listPanelBounds()
+			idx := hitTestSessionRow(
+				m.items,
+				m.cursor,
+				mouse.X-listX,
+				mouse.Y-listY,
+				listWidth,
+				listHeight,
+			)
+			if idx >= 0 {
+				m.cursor = idx
+				return m, m.refreshCurrentPreview()
+			}
+		case mouse.Button == tea.MouseButtonLeft && mouse.Action == tea.MouseActionMotion:
+			m.resizeSplitFromMouse(mouse.X, mouse.Y)
+			return m, nil
+		case mouse.Action == tea.MouseActionRelease && m.splitResizeDrag != nil:
+			m.resizeSplitFromMouse(mouse.X, mouse.Y)
+			layout := m.splitResizeDrag.layout
+			ratio := m.horizontalSplit
+			if layout == layoutVertical {
+				ratio = m.verticalSplit
+			}
+			m.splitResizeDrag = nil
+			_ = saveSplitRatio(layout, ratio)
+			return m, nil
+		default:
+			m.splitResizeDrag = nil
 		}
 	}
 	return m, nil
@@ -401,6 +429,55 @@ func (m Model) listPanelBounds() (x, y, width, height int) {
 
 func (m Model) hasExtraBar() bool {
 	return m.mode == modeFilter || m.mode == modeConfirmKill || m.filterText != ""
+}
+
+func (m Model) splitDividerHit(x, y int) bool {
+	listX, listY, listWidth, listHeight := m.listPanelBounds()
+	if m.isVerticalLayout() {
+		inPanelColumn := x >= listX && x < listX+listWidth
+		return inPanelColumn && (y == listY+listHeight-1 || y == listY+listHeight)
+	}
+
+	inPanelRow := y >= listY && y < listY+listHeight
+	return inPanelRow && (x == listX+listWidth-1 || x == listX+listWidth)
+}
+
+func (m *Model) beginSplitResize(x, y int) {
+	listX, listY, listWidth, listHeight := m.listPanelBounds()
+	if m.isVerticalLayout() {
+		m.splitResizeDrag = &splitResizeDrag{
+			layout:     layoutVertical,
+			origin:     listY,
+			total:      m.panelHeight(),
+			grabOffset: listHeight - (y - listY),
+		}
+		return
+	}
+
+	m.splitResizeDrag = &splitResizeDrag{
+		layout:     layoutHorizontal,
+		origin:     listX,
+		total:      m.width,
+		grabOffset: listWidth - (x - listX),
+	}
+}
+
+func (m *Model) resizeSplitFromMouse(x, y int) {
+	if m.splitResizeDrag == nil {
+		return
+	}
+
+	drag := *m.splitResizeDrag
+	coordinate := x
+	if drag.layout == layoutVertical {
+		coordinate = y
+	}
+	ratio := splitRatioForSize(drag.total, coordinate-drag.origin+drag.grabOffset)
+	if drag.layout == layoutVertical {
+		m.verticalSplit = ratio
+	} else {
+		m.horizontalSplit = ratio
+	}
 }
 
 // expandCurrent expands the row under the cursor and dispatches the loader.
