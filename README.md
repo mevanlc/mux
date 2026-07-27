@@ -12,8 +12,10 @@ This fork adds:
 - responsive stacked and side-by-side layouts, with explicit layout overrides;
 - keyboard- and mouse-adjustable panel splits that persist independently for
   each layout;
-- mouse session selection and clearer full-row selection highlighting; and
-- more reliable AI CLI detection plus `Esc` as a main-list quit key.
+- mouse session selection, width-aware session rows, and clearer full-row
+  selection highlighting; and
+- more reliable AI CLI detection plus updated main-list keyboard help and
+  behavior.
 
 ### responsive layouts
 
@@ -64,15 +66,26 @@ AI badges, which makes the active row unambiguous.
 Mouse clicks select session rows only; window and pane rows still use keyboard
 navigation.
 
-### AI detection and quitting
+Session names use the space remaining after the age, AI badge, and branch
+metadata instead of a fixed 18-character field. Names that do not fit are
+shortened with an ellipsis according to their displayed terminal width.
+
+### AI detection and keyboard behavior
 
 In addition to tmux's reported command and child-process arguments, mux checks
 the pane process's executable name. This preserves detection when a supported
 AI tool changes the command text reported by tmux. Detection remains
 case-sensitive and recognizes `claude`, `codex`, `aider`, and `gemini`.
 
-In the main session list, `Esc` now quits just like `q` or `Ctrl+C`. In filters,
-editors, and confirmation overlays, `Esc` retains its cancel behavior.
+In the main session list, `a` attaches to the selected session, window, or pane
+just like `Enter`. `Esc` quits just like `q` or `Ctrl+C`, including after a
+filter has been applied with `Enter`. While the filter editor is open, `Esc`
+clears the filter and returns to the list; it also retains its cancel behavior
+in the create, rename, and confirmation overlays.
+
+The on-screen help bar is more compact than upstream's: it summarizes the arrow
+keys as navigation and shows `a` for attach. The existing `j`/`k`,
+expand/collapse, and `Enter` bindings remain available.
 
 ## building
 
