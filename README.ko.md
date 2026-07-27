@@ -1,155 +1,87 @@
-# mux
+# mux 포크
 
-**AI CLI 세션 간 전환을 빠르고 직관적으로.**
+이 저장소는 tmux 세션을 미리 보고 관리하며 전환할 수 있는 터미널 UI인
+[mux](https://github.com/lunemis/mux)의 포크입니다. 일반적인 설치 및 사용법은
+[업스트림 저장소](https://github.com/lunemis/mux)를 참고하세요.
 
-tmux 세션을 터미널에서 빠르게 탐색하고 관리하는 TUI 도구입니다.
+## 이 포크에 관하여
 
-[English](README.md)
+이 포크에는 다음 기능이 추가되었습니다.
 
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
+- 명시적으로 레이아웃을 지정할 수 있는 반응형 상하 및 좌우 레이아웃
+- 키보드와 마우스로 조정할 수 있고 각 레이아웃별로 독립적으로 유지되는 패널 분할
+- 마우스를 사용한 세션 선택 및 더 선명한 행 전체 선택 강조 표시
+- 더 안정적인 AI CLI 감지 및 기본 목록에서 종료 키로 사용할 수 있는 `Esc`
 
-![Demo](assets/demo.gif)
+### 반응형 레이아웃
 
-## 기능
+기본 `auto` 모드는 좌우로 나뉜 horizontal 레이아웃과 세션 목록이 미리보기
+위에 배치되는 vertical 레이아웃 중 하나를 선택합니다. 이때 터미널 셀이 가로보다
+세로로 더 길다는 점을 고려하여 터미널의 종횡비를 사용합니다. 정사각형에 가까운
+터미널에서는 패널을 상하로 배치하고, 16:9에 가까운 터미널에서는 좌우 배치를
+유지합니다.
 
-- **실시간 프리뷰** — 선택한 세션의 터미널 출력을 우측 패널에 실시간으로 표시 (500ms 주기 갱신). `Tab`으로 세션을 펼쳐서 윈도우·페인 단위로 각각 프리뷰
-- **AI CLI 감지** — `claude`, `codex`, `aider`, `gemini` 등의 AI CLI가 실행 중이면 배지로 표시
-- **Git 브랜치 표시** — 각 세션의 현재 브랜치를 표시, worktree는 `⌥⌥`로 구분
-- **비용/토큰 추적** — Claude Code 세션의 토큰 사용량과 예상 비용을 실시간 표시 (설정 불필요)
-- **상태바 위젯** — `mux status`로 tmux 상태바에 AI 세션 아이콘 표시
-- **팝업 오버레이** — AI CLI 실행 중에도 키 하나로 mux를 띄워 세션 전환
-- **세션 관리** — TUI 내에서 생성/삭제/이름 변경
-- **퀵 필터** — `/` 키로 세션 이름 또는 경로를 실시간 필터링
+`--layout` 또는 `-l`로 선택을 재정의할 수 있습니다. 이 플래그는 대소문자를
+구분하지 않으며 다음 값을 받습니다.
 
-## 빠른 시작
-
-```bash
-# 인터랙티브 설치 (추천)
-curl -sSL https://raw.githubusercontent.com/lunemis/mux/main/install.sh | bash
-
-# 또는 직접 설치
-brew install lunemis/tap/mux   # or: go install github.com/lunemis/mux/cmd/mux@latest
-mux                             # 세션 매니저 실행
+```text
+auto       a
+horizontal h
+vertical   v
 ```
 
-팝업 모드 설정 (tmux 위에 오버레이로 띄우기):
+예를 들면 다음과 같습니다.
 
 ```bash
-mux setup-keybind               # prefix + m 바인딩
-tmux source-file ~/.tmux.conf   # 설정 리로드
+mux -l vertical
+mux popup --layout horizontal
 ```
 
-이제 tmux에서 `Ctrl+b` → `m`으로 mux를 열 수 있습니다.
+레이아웃 플래그는 패널의 배치 방향만 제어하며 팝업 크기는 변경하지 않습니다.
 
-## 설치
+### 조정 가능한 패널 분할
 
-### 인터랙티브 설치 (추천)
+세션 목록에는 처음에 horizontal 레이아웃에서 사용 가능한 너비의 40%, vertical
+레이아웃에서 사용 가능한 높이의 40%가 할당됩니다. `Shift+Left`/`Shift+Up`으로
+한 번에 터미널 셀 하나만큼 줄이고 `Shift+Right`/`Shift+Down`으로 늘릴 수
+있습니다. 마우스 왼쪽 버튼으로 구분선을 드래그할 수도 있습니다.
 
-바이너리 설치와 키바인딩 설정을 안내합니다:
+mux는 horizontal 및 vertical 레이아웃의 분할 위치를 별도로 유지하며 운영 체제의
+사용자 설정 디렉터리 아래 `mux/config.json`에 변경 사항을 저장합니다. 사용 가능한
+공간이 허용되는 경우 각 패널의 너비 또는 높이는 최소 5셀로 유지됩니다.
+
+### 마우스 및 선택 동작
+
+화면에 보이는 세션 행을 클릭하면 해당 세션을 선택하고 미리보기를 새로 고칩니다.
+이제 선택한 세션의 배경은 AI 배지 주변의 여백을 포함해 목록 전체 너비에 적용되므로
+활성 행을 명확하게 구분할 수 있습니다.
+
+마우스 클릭으로는 세션 행만 선택할 수 있습니다. 윈도우 및 페인 행에서는 계속
+키보드 탐색을 사용합니다.
+
+### AI 감지 및 종료
+
+mux는 tmux가 보고한 명령과 자식 프로세스 인수뿐만 아니라 페인 프로세스의 실행
+파일 이름도 확인합니다. 따라서 지원되는 AI 도구로 인해 tmux가 보고하는 명령
+텍스트가 변경되더라도 감지할 수 있습니다. 감지 시 대소문자를 구분하며 `claude`,
+`codex`, `aider`, `gemini`를 인식합니다.
+
+이제 기본 세션 목록에서 `Esc`는 `q` 또는 `Ctrl+C`와 마찬가지로 프로그램을
+종료합니다. 필터, 편집기 및 확인 오버레이에서 `Esc`는 기존의 취소 동작을
+유지합니다.
+
+## 빌드
+
+빌드하려면 Go 1.24.2 이상이 필요합니다. 실행 시에는 tmux가 필요하며, mux는
+Linux와 macOS를 지원합니다.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/lunemis/mux/main/install.sh | bash
+make build
 ```
 
-### Homebrew
-
-```bash
-brew install lunemis/tap/mux
-```
-
-### 소스에서 빌드
-
-```bash
-git clone https://github.com/lunemis/mux.git
-cd mux
-make install   # /usr/local/bin에 설치
-```
-
-### Go install
-
-```bash
-go install github.com/lunemis/mux/cmd/mux@latest
-```
-
-## 사용법
-
-### 기본
-
-`mux`를 실행하면 세션 매니저가 열립니다. `j`/`k`로 탐색, `Enter`로 attach, `q`/`Esc`로 종료.
-
-![Screenshot](assets/screenshot.png)
-
-왼쪽 패널에 세션 목록(AI 배지 + git 브랜치), 오른쪽 패널에 선택한 세션의 **실시간 프리뷰**가 500ms마다 갱신됩니다.
-
-기본적으로 `mux`는 터미널 비율이 16:9보다 1:1에 가까우면 세션 목록을 위, 프리뷰를 아래에 자동으로 쌓고, 1:1보다 16:9에 가까우면 좌우 배치로 전환합니다. `--layout`(또는 `-l`)으로 배치를 지정할 수 있습니다. `mux -l vertical` 또는 `mux -l v`로 세로 배치를 강제하고, `mux -l horizontal` 또는 `mux -l h`로 좌우 배치를 강제하며, `mux -l auto` 또는 `mux -l a`로 자동 배치를 사용합니다.
-
-### 팝업 모드 (추천)
-
-tmux 안에서 작업 중일 때, 어떤 프로그램이 실행 중이어도 키 하나로 mux를 오버레이로 띄울 수 있습니다.
-
-```bash
-# 키바인딩 설정 (최초 1회)
-mux setup-keybind          # prefix + m (기본값)
-mux setup-keybind Space    # 다른 키로 변경 가능
-
-# tmux 설정 리로드
-tmux source-file ~/.tmux.conf
-```
-
-`mux popup`으로 수동 실행도 가능합니다.
-
-> **참고:** tmux 3.2 이상 필요
-
-![Popup mode](assets/popup.gif)
-
-### 상태바 위젯
-
-TUI를 열지 않고 tmux 상태바에서 AI 세션 아이콘을 표시:
-
-```bash
-# ~/.tmux.conf에 추가
-set -g status-right '#(mux status)'
-```
-
-AI 세션이 활성화되면 `✦ ◈` 같은 아이콘이 상태바에 표시됩니다.
-
-### skimd 연동
-
-마크다운 뷰어 [skimd](https://github.com/lunemis/skimd)와 함께 쓰면 AI가 생성한 문서를 tmux 안에서 바로 검토할 수 있습니다.
-
-- `prefix+m` → **mux** — 세션 전환
-- `prefix+v` → **skimd** — 문서 훑기
-
-![mux + skimd workflow](assets/workflow.gif)
-
-### 키바인딩
-
-| 키 | 동작 |
-|---|---|
-| `j` / `k` | 위로 / 아래로 이동 |
-| `g` / `G` | 처음 / 마지막으로 이동 |
-| `Tab` / `→` / `l` | 세션 → 윈도우 → 페인 펼치기 |
-| `Shift+Tab` / `←` / `h` | 한 단계 접기 |
-| `Shift+←↑↓→` | 패널 분할 크기 조정 |
-| 패널 구분선 드래그 | 패널 분할 크기 조정 |
-| 세션 행 클릭 | 해당 세션 선택 |
-| `Enter` | attach (선택한 윈도우·페인까지 포커스) |
-| `n` | 새 세션 생성 |
-| `r` | 세션 이름 변경 |
-| `x` | 세션 삭제 (확인 후) |
-| `/` | 세션 필터링 |
-| `q` / `Esc` | 종료 |
-
-## 요구사항
-
-- tmux (팝업 모드는 3.2+)
-- Linux 또는 macOS
-
-## 기여
-
-[CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+이 명령은 `./mux`를 생성합니다. `$PREFIX/bin`(기본값은 `/usr/local/bin`) 아래에
+설치하려면 `make install`을 실행하세요.
 
 ## 라이선스
 
-[MIT](LICENSE)
+이 포크는 [MIT 라이선스](LICENSE)에 따라 배포됩니다.
