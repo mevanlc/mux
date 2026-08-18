@@ -1,4 +1,4 @@
-module github.com/lunemis/mux
+module github.com/mevanlc/mux
 
 go 1.24.2
 

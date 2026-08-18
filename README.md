@@ -92,6 +92,14 @@ expand/collapse, and `Enter` bindings remain available.
 Building requires Go 1.24.2 or newer. tmux is required at runtime; mux supports
 Linux and macOS.
 
+Install the latest tagged release of this fork with:
+
+```bash
+go install github.com/mevanlc/mux/cmd/mux@latest
+```
+
+Or build the current checkout:
+
 ```bash
 make build
 ```

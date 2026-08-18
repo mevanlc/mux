@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/lunemis/mux/tmux"
+	"github.com/mevanlc/mux/tmux"
 )
 
 const (

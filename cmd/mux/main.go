@@ -7,8 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/lunemis/mux/tmux"
-	"github.com/lunemis/mux/ui"
+	"github.com/mevanlc/mux/tmux"
+	"github.com/mevanlc/mux/ui"
 )
 
 var version = "dev"

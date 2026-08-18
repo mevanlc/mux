@@ -3,7 +3,7 @@ package ui
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lunemis/mux/tmux"
+	"github.com/mevanlc/mux/tmux"
 )
 
 type renameModel struct {

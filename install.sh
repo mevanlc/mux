@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="lunemis/mux"
+REPO="mevanlc/mux"
 BINARY="mux"
 INSTALL_DIR="/usr/local/bin"
 # Parse flags

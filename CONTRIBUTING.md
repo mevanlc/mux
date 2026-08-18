@@ -5,14 +5,14 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Development setup
 
 ```bash
-git clone https://github.com/lunemis/mux.git
+git clone https://github.com/mevanlc/mux.git
 cd mux
 make build
 ```
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.24.2+
 - tmux
 
 ### Running tests

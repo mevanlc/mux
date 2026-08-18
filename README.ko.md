@@ -86,6 +86,14 @@ mux는 tmux가 보고한 명령과 자식 프로세스 인수뿐만 아니라 �
 빌드하려면 Go 1.24.2 이상이 필요합니다. 실행 시에는 tmux가 필요하며, mux는
 Linux와 macOS를 지원합니다.
 
+이 포크에서 태그가 지정된 최신 릴리스를 설치하려면 다음을 실행하세요.
+
+```bash
+go install github.com/mevanlc/mux/cmd/mux@latest
+```
+
+현재 체크아웃을 빌드하려면 다음을 실행하세요.
+
 ```bash
 make build
 ```

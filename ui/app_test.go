@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lunemis/mux/tmux"
+	"github.com/mevanlc/mux/tmux"
 )
 
 func TestListEscQuitsLikeQ(t *testing.T) {
