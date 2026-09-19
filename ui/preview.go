@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/mevanlc/mux/tmux"
 )
 
@@ -92,7 +93,7 @@ func renderPreview(item *listItem, captured string, width, height int, tokenUsag
 	lineIdx++
 	for i := 0; i < contentLines; i++ {
 		if i < len(capLines) {
-			allLines[lineIdx+i] = padOrTruncate(capLines[i], innerWidth)
+			allLines[lineIdx+i] = padOrTruncate(expandPreviewTabs(capLines[i]), innerWidth)
 		} else {
 			allLines[lineIdx+i] = strings.Repeat(" ", innerWidth)
 		}
@@ -100,6 +101,28 @@ func renderPreview(item *listItem, captured string, width, height int, tokenUsag
 
 	content := strings.Join(allLines, "\n")
 	return drawBorder(content, width, innerHeight)
+}
+
+// expandPreviewTabs uses pane-relative eight-cell tab stops before measuring or
+// clipping a captured line. Raw tabs measure as zero cells but move the terminal
+// cursor, overflowing the border and desynchronizing subsequent redraws.
+func expandPreviewTabs(line string) string {
+	if !strings.ContainsRune(line, '\t') {
+		return line
+	}
+
+	var expanded strings.Builder
+	column := 0
+	for i, part := range strings.Split(line, "\t") {
+		if i > 0 {
+			spaces := 8 - column%8
+			expanded.WriteString(strings.Repeat(" ", spaces))
+			column += spaces
+		}
+		expanded.WriteString(part)
+		column += ansi.StringWidth(part)
+	}
+	return expanded.String()
 }
 
 // previewLabel returns the header label for the previewed target. For session

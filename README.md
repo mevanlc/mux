@@ -44,6 +44,9 @@ mux popup --layout horizontal
 The layout flag controls only panel orientation. It does not change the popup's
 size.
 
+Session previews expand tabs at eight-cell stops before clipping, keeping tabbed
+shell output inside the panel borders while preserving its colors.
+
 ### adjustable panel splits
 
 The session list initially receives 40% of the available width in horizontal
