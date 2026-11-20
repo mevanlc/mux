@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -47,21 +48,33 @@ func OpenPopup(layout string) error {
 		return fmt.Errorf("failed to find mux executable: %w", err)
 	}
 
-	popupCommand := muxPath
-	if layout != "" && layout != "auto" {
-		popupCommand += " --layout " + layout
-	}
-
+	// Display on the current client's server, even when mux will browse another
+	// server. Forward the selection to the mux process inside the popup.
 	cmd := exec.Command("tmux", "display-popup",
 		"-E",
 		"-w", popupWidth,
 		"-h", popupHeight,
-		popupCommand,
+		muxShellCommand(muxPath, layout),
 	)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func muxShellCommand(muxPath, layout string) string {
+	command := shellQuote(muxPath)
+	if socketName != "" {
+		command += " --socket " + shellQuote(socketName)
+	}
+	if layout != "" && layout != "auto" {
+		command += " --layout " + shellQuote(layout)
+	}
+	return command
 }
 
 func findTmuxConf() (string, error) {
@@ -152,7 +165,9 @@ func SetupKeybind(key string) error {
 	if err != nil {
 		return err
 	}
-	bindLine := fmt.Sprintf(`bind %s display-popup -E -w %s -h %s "%s"`, key, popupWidth, popupHeight, muxPath)
+	popupCommand := strconv.Quote(muxShellCommand(muxPath, "auto"))
+	popupCommand = strings.ReplaceAll(popupCommand, "$", `\$`)
+	bindLine := fmt.Sprintf("bind %s display-popup -E -w %s -h %s %s", key, popupWidth, popupHeight, popupCommand)
 
 	if isOhMyTmux(confPath) {
 		localPath := findTmuxConfLocal(confPath)

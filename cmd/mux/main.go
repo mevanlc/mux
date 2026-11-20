@@ -14,16 +14,27 @@ import (
 var version = "dev"
 
 func main() {
+	if err := newRootCommand().Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func newRootCommand() *cobra.Command {
+	var socket string
 	rootCmd := &cobra.Command{
 		Use:     "mux",
 		Short:   "TUI tmux session manager",
 		Version: version,
 		RunE:    runTUI,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			tmux.SetSocket(socket)
+		},
 		// Suppress cobra's default completion and help subcommands
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 	rootCmd.SetVersionTemplate("mux {{.Version}}\n")
 	rootCmd.PersistentFlags().StringP("layout", "l", "auto", "layout mode: auto/a, horizontal/h, or vertical/v")
+	rootCmd.PersistentFlags().StringVarP(&socket, "socket", "L", "", "tmux socket name (same as tmux -L)")
 
 	popupCmd := &cobra.Command{
 		Use:   "popup",
@@ -64,9 +75,7 @@ func main() {
 
 	rootCmd.AddCommand(popupCmd, setupKeybindCmd, statusCmd)
 
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+	return rootCmd
 }
 
 func runStatus() error {

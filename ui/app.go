@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -902,30 +903,40 @@ func (m Model) AttachPaneIndex() int {
 // specific window and pane first. Pass windowIdx == -1 to keep the active
 // window; pass paneIdx == -1 to keep the active pane within that window.
 //
-// If already inside tmux, uses switch-client. Otherwise, uses attach-session.
+// Uses switch-client inside the selected server. Otherwise, uses attach-session.
 func AttachToSession(name string, windowIdx, paneIdx int) error {
 	tmuxPath, err := exec.LookPath("tmux")
 	if err != nil {
 		return fmt.Errorf("tmux not found: %w", err)
+	}
+	sameServer, err := tmux.IsCurrentServer()
+	if err != nil {
+		return err
 	}
 
 	// Focus the requested window/pane *before* attaching, since attach-session
 	// replaces our process and we can't run anything afterwards.
 	if windowIdx >= 0 {
 		windowTarget := fmt.Sprintf("%s:%d", name, windowIdx)
-		if err := exec.Command(tmuxPath, "select-window", "-t", windowTarget).Run(); err != nil {
+		if err := exec.Command(tmuxPath, tmux.SocketArgs("select-window", "-t", windowTarget)...).Run(); err != nil {
 			return fmt.Errorf("select-window %s: %w", windowTarget, err)
 		}
 		if paneIdx >= 0 {
 			paneTarget := fmt.Sprintf("%s.%d", windowTarget, paneIdx)
-			if err := exec.Command(tmuxPath, "select-pane", "-t", paneTarget).Run(); err != nil {
+			if err := exec.Command(tmuxPath, tmux.SocketArgs("select-pane", "-t", paneTarget)...).Run(); err != nil {
 				return fmt.Errorf("select-pane %s: %w", paneTarget, err)
 			}
 		}
 	}
 
-	if os.Getenv("TMUX") != "" {
-		return exec.Command(tmuxPath, "switch-client", "-t", name).Run()
+	if sameServer {
+		return exec.Command(tmuxPath, tmux.SocketArgs("switch-client", "-t", name)...).Run()
 	}
-	return syscall.Exec(tmuxPath, []string{"tmux", "attach-session", "-t", name}, os.Environ())
+	// A different server cannot switch the current client. Attach a nested client
+	// instead, clearing the outer server's identity so tmux permits the attach.
+	env := slices.DeleteFunc(os.Environ(), func(entry string) bool {
+		return strings.HasPrefix(entry, "TMUX=") || strings.HasPrefix(entry, "TMUX_PANE=")
+	})
+	args := append([]string{"tmux"}, tmux.SocketArgs("attach-session", "-t", name)...)
+	return syscall.Exec(tmuxPath, args, env)
 }

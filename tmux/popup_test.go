@@ -2,7 +2,9 @@ package tmux
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -17,6 +19,33 @@ tmux_conf_24b_colour=true
 
 # "$@"
 `
+
+func TestMuxShellCommandPreservesArguments(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mux with 'quotes' #$name")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nprintf '%s\\000' \"$@\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	old := socketName
+	t.Cleanup(func() { SetSocket(old) })
+	for _, socket := range []string{"", "work", "work with 'quotes' #${name}; $(false)"} {
+		t.Run(socket, func(t *testing.T) {
+			SetSocket(socket)
+			out, err := exec.Command("sh", "-c", muxShellCommand(path, "vertical")).Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{"--layout", "vertical"}
+			if socket != "" {
+				want = append([]string{"--socket", socket}, want...)
+			}
+			got := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
+			if !slices.Equal(got, want) {
+				t.Fatalf("shell arguments = %q, want %q", got, want)
+			}
+		})
+	}
+}
 
 func TestFindTmuxConfLocal(t *testing.T) {
 	tests := []struct {

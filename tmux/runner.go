@@ -25,3 +25,11 @@ var runner CommandRunner = execRunner{}
 func SetRunner(r CommandRunner) {
 	runner = r
 }
+
+func output(args ...string) ([]byte, error) {
+	return runner.Output("tmux", SocketArgs(args...)...)
+}
+
+func run(args ...string) error {
+	return runner.Run("tmux", SocketArgs(args...)...)
+}

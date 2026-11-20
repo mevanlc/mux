@@ -15,7 +15,7 @@ const (
 // ListWindows returns all windows in the given session, sorted by index.
 // Returned windows have Panes == nil; call ListPanes to populate them.
 func ListWindows(sessionName string) ([]Window, error) {
-	out, err := runner.Output("tmux", "list-windows", "-t", sessionName, "-F", windowListFormat)
+	out, err := output("list-windows", "-t", sessionName, "-F", windowListFormat)
 	if err != nil {
 		return nil, fmt.Errorf("list windows %s: %w", sessionName, err)
 	}
@@ -45,7 +45,7 @@ func ListWindows(sessionName string) ([]Window, error) {
 // windowIndex is the tmux window index (as reported by ListWindows).
 func ListPanes(sessionName string, windowIndex int) ([]Pane, error) {
 	target := fmt.Sprintf("%s:%d", sessionName, windowIndex)
-	out, err := runner.Output("tmux", "list-panes", "-t", target, "-F", paneListFormat)
+	out, err := output("list-panes", "-t", target, "-F", paneListFormat)
 	if err != nil {
 		return nil, fmt.Errorf("list panes %s: %w", target, err)
 	}

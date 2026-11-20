@@ -9,6 +9,7 @@ and usage documentation.
 
 This fork adds:
 
+- named tmux server selection with `-L` / `--socket`;
 - responsive stacked and side-by-side layouts, with explicit layout overrides;
 - keyboard- and mouse-adjustable panel splits that persist independently for
   each layout;
@@ -16,6 +17,23 @@ This fork adds:
   selection highlighting; and
 - more reliable AI CLI detection plus updated main-list keyboard help and
   behavior.
+
+### named sockets
+
+Use `-L NAME` or `--socket NAME` to select a tmux server, just like `tmux -L NAME`:
+
+```bash
+mux -L work
+mux popup --socket work
+mux status -L work
+```
+
+Browsing, previews, session actions, and attaching all use the selected server.
+Popups open in the current tmux client and pass the socket selection to mux.
+Attaching within the current server switches sessions; attaching to a different
+server opens a nested client. Detach that client to return to the outer server.
+`setup-keybind` also saves the socket selection in the generated binding.
+Omitting the flag preserves tmux's normal socket selection.
 
 ### responsive layouts
 
